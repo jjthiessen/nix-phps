@@ -20,6 +20,8 @@ let
         then prev.pcre2
         else prev.pcre;
 
+      systemdSupport = args.systemdSupport or (prev.stdenv.isLinux && prev.lib.versionAtLeast args.version "5.5");
+
       phpAttrsOverrides =
         attrs:
 
@@ -129,6 +131,12 @@ let
   mkPhp = args: prev.callPackage generic (_mkArgs args);
 in
 {
+  php53 = import ./php/5.3.nix { inherit prev mkPhp; };
+
+  php54 = import ./php/5.4.nix { inherit prev mkPhp; };
+
+  php55 = import ./php/5.5.nix { inherit prev mkPhp; };
+
   php56 = import ./php/5.6.nix { inherit prev mkPhp; };
 
   php70 = import ./php/7.0.nix { inherit prev mkPhp; };

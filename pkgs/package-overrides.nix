@@ -474,6 +474,10 @@ in
         ++ lib.optionals (lib.versionOlder prev.php.version "7.4") [
           # Introduced in https://github.com/NixOS/nixpkgs/commit/2e0d4a8b39a03a0db0c6c3622473d333a44d1ec1
           ./patches/mysqlnd_fix_compression.patch
+        ]
+        ++ lib.optionals (lib.versionOlder prev.php.version "5.6") [
+          # File does not appear to exist; the only related reference I could find is https://bugs.php.net/bug.php?id=66970
+          ./patches/mysqlnd_fix_portability.patch
         ];
 
       postPatch =
@@ -537,7 +541,7 @@ in
             attrs.patches or [];
 
           ourPatches =
-            lib.optionals (lib.versionOlder prev.php.version "7.0") [
+            lib.optionals (lib.versionAtLeast prev.php.version "5.6" && lib.versionOlder prev.php.version "7.0") [
               # PHP ≤ 5.6 requires openssl 1.0.
               # https://github.com/php-build/php-build/pull/609
               # https://github.com/oerdnj/deb.sury.org/issues/566
@@ -552,10 +556,17 @@ in
       buildInputs =
         let
           replaceOpenssl = pkg:
-            if pkg.pname == "openssl" && lib.versionOlder prev.php.version "8.1" then
-              pkgs.openssl_1_1.overrideAttrs (old: {
-                meta = builtins.removeAttrs old.meta [ "knownVulnerabilities" ];
-              })
+            if pkg.pname == "openssl" then
+              if lib.versionOlder prev.php.version "5.6" then
+                pkgs.openssl_1_0_2.overrideAttrs (old: {
+                  meta = builtins.removeAttrs old.meta [ "knownVulnerabilities" ];
+                })
+              else if lib.versionOlder prev.php.version "8.1" then
+                pkgs.openssl_1_1.overrideAttrs (old: {
+                  meta = builtins.removeAttrs old.meta [ "knownVulnerabilities" ];
+                })
+              else
+                pkg
             else
               pkg;
         in
@@ -594,7 +605,7 @@ in
             attrs.patches or [];
 
           ourPatches =
-            lib.optionals (lib.versionOlder prev.php.version "7.2") [
+            lib.optionals (lib.versionAtLeast prev.php.version "5.6" && lib.versionOlder prev.php.version "7.2") [
               # Fix Darwin builds on 7.1
               (pkgs.fetchpatch {
                 url = "https://github.com/php/php-src/commit/11eed9f3ba7429be467b54d8407cfbd6bd7e6f3a.patch";

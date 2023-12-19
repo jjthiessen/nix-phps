@@ -1,0 +1,8 @@
+--- a/ext/mysqlnd/mysqlnd_portability.h
++++ b/ext/mysqlnd/mysqlnd_portability.h
+@@ -37,5 +37,3 @@
+ #if defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(WIN32)
+ #  include "ext/mysqlnd/config-win.h"
+-#else 
+-#  include <ext/mysqlnd/php_mysqlnd_config.h>
+ #endif /* _WIN32... */
