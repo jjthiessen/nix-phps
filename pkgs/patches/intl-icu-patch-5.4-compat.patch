@@ -1,0 +1,21 @@
+--- a
++++ b
+@@ -1,7 +1,7 @@
+ --- a/ext/intl/msgformat/msgformat_helpers.cpp
+ +++ b/ext/intl/msgformat/msgformat_helpers.cpp
+-@@ -76,6 +76,16 @@
+- #endif
++@@ -48,6 +48,17 @@
++ }
+  U_NAMESPACE_END
+  
+ +using U_ICU_NAMESPACE::Formattable;
+@@ -14,6 +14,7 @@
+ +using U_ICU_NAMESPACE::MessageFormatAdapter;
+ +using U_ICU_NAMESPACE::FieldPosition;
+++using U_ICU_NAMESPACE::UnicodeString;
+ +
+- U_CFUNC int32_t umsg_format_arg_count(UMessageFormat *fmt)
++ U_CFUNC int32_t umsg_format_arg_count(UMessageFormat *fmt) 
+  {
+  	int32_t fmt_count = 0;

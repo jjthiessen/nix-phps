@@ -3,7 +3,7 @@
 let
   base = mkPhp {
     version = "5.3.29";
-    hash = "sha256-ZzyB67LkjKRoyu4DF2ImZlGEPXInwYqCSt2bB7k5Pjg=";
+    hash = "sha256-xOHPaXKyqcfyd3oYSX2Dv3E82+yrtl0/9iukQa67AJE=";
   };
 in
 base.withExtensions (
@@ -20,38 +20,37 @@ base.withExtensions (
       fileinfo
       filter
       ftp
-      gd # remove?
-      gettext # remove?
+      gd
+      gettext
       gmp
-      # add hash?
       iconv
-      intl # remove?
+      intl
       json
       ldap
       mbstring
-      # add mcrypt?
+      mcrypt
       mysqli
       mysqlnd
-      opcache # remove?
+      opcache
       openssl
       pcntl
       pdo
       pdo_mysql
       pdo_odbc
       pdo_pgsql
-      pdo_sqlite # remove?
+      pdo_sqlite
       pgsql
       posix
-      readline # remove?
+      readline
       session
       simplexml
       sockets
       soap
-      sysvsem # remove?
-      sqlite3 # remove?
+      sysvsem
+      sqlite3
       tokenizer
-      # add xdebug?
-      xmlreader # remove?
+      xdebug
+      xmlreader
       xmlwriter
       zip
       zlib

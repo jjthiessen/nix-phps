@@ -20,18 +20,18 @@ base.withExtensions (
       fileinfo
       filter
       ftp
-      gd # remove?
+      # gd # Likely needs gd < v2.3; Getting `undefined symbol: gdGetC` at runtime with gd v2.3.3
       gettext
       gmp
-      # add hash?
       iconv
-      intl # remove?
+      intl
       json
       ldap
       mbstring
+      mcrypt
       mysqli
       mysqlnd
-      opcache # remove?
+      # opcache # Available in PECL as `ZendOpcache`?
       openssl
       pcntl
       pdo
@@ -41,12 +41,12 @@ base.withExtensions (
       pdo_sqlite
       pgsql
       posix
-      readline # remove?
+      readline
       session
       simplexml
       sockets
       soap
-      sysvsem # remove?
+      sysvsem
       sqlite3
       tokenizer
       xmlreader

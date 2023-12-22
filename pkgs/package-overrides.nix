@@ -20,9 +20,7 @@ let
   inherit (pkgs) lib;
 
   inherit (import ./lib.nix { inherit lib; }) removeLines;
-in
 
-{
   buildPecl =
     {
       internalDeps ? [],
@@ -34,6 +32,10 @@ in
       # references to the external extension which no longer exists.
       internalDeps = builtins.filter (d: d != null) internalDeps;
     });
+in
+
+{
+  inherit buildPecl;
 
   tools = prev.tools // {
     php-cs-fixer-2 = final.callPackage ./php-cs-fixer/2.x.nix { };
@@ -105,13 +107,13 @@ in
           upstreamPatches =
             attrs.patches or [];
 
-          ourPatches = lib.optionals (lib.versionOlder prev.php.version "7.2") [
+          ourPatches = lib.optionals (lib.versionAtLeast prev.php.version "5.5" && lib.versionOlder prev.php.version "7.2") [
             # Fix tests with libxml2 2.9.10.
             (pkgs.fetchpatch {
               url = "https://github.com/php/php-src/commit/e29922f054639a934f3077190729007896ae244c.patch";
               sha256 = "zC2QE6snAhhA7ItXgrc80WlDVczTlZEzgZsD7AS+gtw=";
             })
-          ] ++ lib.optionals (lib.versionOlder prev.php.version "7.4") [
+          ] ++ lib.optionals (lib.versionAtLeast prev.php.version "5.5" && lib.versionOlder prev.php.version "7.4") [
             (pkgs.fetchpatch {
               url = "https://github.com/php/php-src/commit/4cc261aa6afca2190b1b74de39c3caa462ec6f0b.patch";
               sha256 = "11qsdiwj1zmpfc2pgh6nr0sn7qa1nyjg4jwf69cgwnd57qfjcy4k";
@@ -213,14 +215,27 @@ in
           ];
 
           configureFlags = [
-            "--with-gd=${pkgs.gd.dev}"
-            "--with-freetype-dir=${pkgs.freetype.dev}"
             "--with-jpeg-dir=${pkgs.libjpeg.dev}"
             "--with-png-dir=${pkgs.libpng.dev}"
             "--with-webp-dir=${pkgs.libwebp}"
-            "--with-xpm-dir=${pkgs.xorg.libXpm.dev}"
             "--with-zlib-dir=${pkgs.zlib.dev}"
             "--enable-gd-jis-conv"
+          ] ++ lib.optionals (lib.versionAtLeast prev.php.version "5.5") [
+            "--with-gd=${pkgs.gd.dev}"
+            "--with-freetype-dir=${pkgs.freetype.dev}"
+            "--with-xpm-dir=${pkgs.xorg.libXpm.dev}"
+          ] ++ lib.optionals (lib.versionAtLeast prev.php.version "5.4" && lib.versionOlder prev.php.version "5.5") [
+            "--with-gd=${pkgs.gd.out}"
+            "--with-freetype-dir=${pkgs.freetype.dev}"
+            "--with-xpm-dir=${pkgs.xorg.libXpm.out}"
+            "GD_INCLUDE=${pkgs.gd.dev}/include"
+            "GD_XPM_INC=${pkgs.xorg.libXpm.dev}/include"
+          ] ++ lib.optionals (lib.versionOlder prev.php.version "5.4") [
+            "--with-gd=${pkgs.gd.out}"
+            "--with-freetype-dir=${pkgs.freetype.dev}"
+            "--with-xpm-dir=${pkgs.xorg.libXpm.out}"
+            "GD_INCLUDE=${pkgs.gd.dev}/include"
+            "GD_XPM_INC=${pkgs.xorg.libXpm.dev}/include"
           ];
 
           doCheck = false;
@@ -283,16 +298,53 @@ in
           ourPatches =
             lib.optionals (lib.versionOlder prev.php.version "7.1") [
               # Fix build with newer ICU.
-              (pkgs.fetchpatch {
+              (pkgs.fetchpatch ({
                 url = "https://github.com/php/php-src/commit/8d35a423838eb462cd39ee535c5d003073cc5f22.patch";
-                sha256 = if lib.versionOlder prev.php.version "7.0" then "8v0k6zaE5w4yCopCVa470TMozAXyK4fQelr+KuVnAv4=" else "NO3EY5z1LFWKor9c/9rJo1rpigG5x8W3Uj5+xAOwm+g=";
-                postFetch = ''
-                  # Resolve conflicts of the upstream patch with the old PHP source tree.
-                  patch "$out" < ${if lib.versionOlder prev.php.version "7.0" then ./patches/intl-icu-patch-5.6-compat.patch else ./patches/intl-icu-patch-7.0-compat.patch}
-                '';
-              })
+              } // (
+                if lib.versionOlder prev.php.version "5.5" then {
+                  sha256 = "0/k4GtRHD0qBgT6x6VBU7er5BVcyNxm//EBRs2Iao+Y=";
+                  excludes = [
+                    "ext/intl/breakiterator/breakiterator_class.cpp"
+                    "ext/intl/breakiterator/breakiterator_class.h"
+                    "ext/intl/breakiterator/breakiterator_methods.cpp"
+                    "ext/intl/breakiterator/codepointiterator_internal.cpp"
+                    "ext/intl/breakiterator/codepointiterator_internal.h"
+                    "ext/intl/breakiterator/rulebasedbreakiterator_methods.cpp"
+                    "ext/intl/calendar/calendar_class.cpp"
+                    "ext/intl/calendar/calendar_class.h"
+                    "ext/intl/calendar/calendar_methods.cpp"
+                    "ext/intl/calendar/gregoriancalendar_methods.cpp"
+                    "ext/intl/common/common_date.cpp"
+                    "ext/intl/common/common_date.h"
+                    "ext/intl/common/common_enum.h"
+                    "ext/intl/dateformat/dateformat_format_object.cpp"
+                    "ext/intl/dateformat/dateformat_helpers.cpp"
+                    "ext/intl/dateformat/dateformat_helpers.h"
+                    "ext/intl/intl_convertcpp.h"
+                    "ext/intl/timezone/timezone_class.cpp"
+                    "ext/intl/timezone/timezone_class.h"
+                    "ext/intl/timezone/timezone_methods.cpp"
+                  ];
+                  postFetch = ''
+                    # Resolve conflicts of the upstream patch with the old PHP source tree.
+                    patch "$out" < ${./patches/intl-icu-patch-5.4-compat.patch}
+                  '';
+                } else if lib.versionOlder prev.php.version "7.0" then {
+                  sha256 = "8v0k6zaE5w4yCopCVa470TMozAXyK4fQelr+KuVnAv4=";
+                  postFetch = ''
+                    # Resolve conflicts of the upstream patch with the old PHP source tree.
+                    patch "$out" < ${./patches/intl-icu-patch-5.6-compat.patch}
+                  '';
+                } else {
+                  sha256 = "NO3EY5z1LFWKor9c/9rJo1rpigG5x8W3Uj5+xAOwm+g=";
+                  postFetch = ''
+                    # Resolve conflicts of the upstream patch with the old PHP source tree.
+                    patch "$out" < ${./patches/intl-icu-patch-7.0-compat.patch}
+                  '';
+                }
+              )))
             ]
-            ++ lib.optionals (lib.versionOlder prev.php.version "7.4") [
+            ++ lib.optionals (lib.versionAtLeast prev.php.version "5.5" && lib.versionOlder prev.php.version "7.4") [
               # Fix aarch64 build
               # Introduced in https://github.com/NixOS/nixpkgs/commit/30e812c6c09e1b971dc902399f3dc39d542d89d9
               (pkgs.fetchpatch {
@@ -313,9 +365,12 @@ in
             attrs.patches or [];
 
           ourPatches =
-            lib.optionals (lib.versionOlder prev.php.version "8.0") [
+            lib.optionals (lib.versionAtLeast prev.php.version "5.5" && lib.versionOlder prev.php.version "8.0") [
               # Header path defaults to FHS location, preventing the configure script from detecting errno support.
               ./patches/iconv-header-path.patch
+            ] ++ lib.optionals (lib.versionOlder prev.php.version "5.5") [
+              # Header path defaults to FHS location, preventing the configure script from detecting errno support.
+              ./patches/iconv-header-path-5.4.patch
             ];
         in
         ourPatches ++ upstreamPatches;
@@ -376,6 +431,25 @@ in
         })
       else
         prev.extensions.mbstring;
+
+    mcrypt =
+      if lib.versionOlder prev.php.version "7.2" then
+        prev.mkExtension {
+          name = "mcrypt";
+          configureFlags = [
+            "--with-mcrypt=${pkgs.libmcrypt}"
+          ];
+        }
+      else
+        buildPecl {
+          pname = "mcrypt";
+          version = "1.0.7";
+    
+          #sha256 = "";
+
+          doCheck = true;
+          checkTarget = "test";
+        };
 
     memcached =
       if lib.versionOlder prev.php.version "7.0" then
@@ -516,23 +590,42 @@ in
       else
         prev.extensions.oci8;
 
-    opcache = prev.extensions.opcache.overrideAttrs (attrs: {
-      patches =
-        attrs.patches or []
-        ++ lib.optionals (lib.versionAtLeast prev.php.version "7.0" && lib.versionOlder prev.php.version "7.4") [
-          # Introduced in https://github.com/NixOS/nixpkgs/commit/2e0d4a8b39a03a0db0c6c3622473d333a44d1ec1
-          ./patches/zend_file_cache_config.patch
-        ];
+    opcache = if lib.versionAtLeast prev.php.version "5.5" then
+      prev.extensions.opcache.overrideAttrs (attrs: {
+        patches =
+          attrs.patches or []
+          ++ lib.optionals (lib.versionAtLeast prev.php.version "7.0" && lib.versionOlder prev.php.version "7.4") [
+            # Introduced in https://github.com/NixOS/nixpkgs/commit/2e0d4a8b39a03a0db0c6c3622473d333a44d1ec1
+            ./patches/zend_file_cache_config.patch
+          ];
 
-      doCheck = lib.versionAtLeast prev.php.version "7.4";
+        doCheck = lib.versionAtLeast prev.php.version "7.4";
 
-      postPatch =
-        removeLines
-          (lib.optionals (lib.versionOlder prev.php.version "7.2.20" && pkgs.stdenv.isDarwin) [
-            "rm ext/opcache/tests/bug78106.phpt"
-          ])
-          attrs.postPatch;
-    });
+        postPatch =
+          removeLines
+            (lib.optionals (lib.versionOlder prev.php.version "7.2.20" && pkgs.stdenv.isDarwin) [
+              "rm ext/opcache/tests/bug78106.phpt"
+            ])
+            attrs.postPatch;
+      })
+    else let
+      pname = "opcache";
+      version = "7.0.5";
+    in buildPecl {
+      inherit pname version;
+ 
+      src = pkgs.fetchurl {
+        url = "http://pecl.php.net/get/zend${pname}-${version}.tgz";
+        sha256 = "yOSiO8x45igPQbUCDqxIJagQ13aE0M4QYIv6W+zp6cA=";
+      };
+
+      doCheck = true;
+      checkTarget = "test";
+
+      zendExtension = true;
+
+      meta.maintainers = lib.teams.php.members;
+    };
 
     openssl = prev.extensions.openssl.overrideAttrs (attrs: {
       patches =
@@ -656,7 +749,7 @@ in
             attrs.patches or [];
 
           ourPatches =
-            lib.optionals (lib.versionOlder prev.php.version "7.2") [
+            lib.optionals (lib.versionAtLeast prev.php.version "5.4" && lib.versionOlder prev.php.version "7.2") [
               # Fix readline build
               (pkgs.fetchpatch {
                 url = "https://github.com/php/php-src/commit/1ea58b6e78355437b79fb7b1f287ba6688fb1c57.patch";
@@ -827,13 +920,31 @@ in
               sha256 = "19m40n5h339yk0g458zpbsck1lslhnjsmhrp076kzhl5l4x2iwxh";
             };
           })
-      else
+      else if lib.versionAtLeast prev.php.version "5.5" then
         prev.extensions.xdebug.overrideAttrs (attrs: {
           name = "xdebug-2.5.5";
           version = "2.5.5";
           src = pkgs.fetchurl {
             url = "http://pecl.php.net/get/xdebug-2.5.5.tgz";
             sha256 = "197i1fcspbrdxki6rljvpjdxzhyaxl7nlihhiqcyfkjipkr8n43j";
+          };
+        })
+      else if lib.versionAtLeast prev.php.version "5.4" then
+        prev.extensions.xdebug.overrideAttrs (attrs: {
+          name = "xdebug-2.4.1";
+          version = "2.4.1";
+          src = pkgs.fetchurl {
+            url = "http://pecl.php.net/get/xdebug-2.4.1.tgz";
+            #sha256 = "";
+          };
+        })
+      else
+        prev.extensions.xdebug.overrideAttrs (attrs: {
+          name = "xdebug-2.2.7";
+          version = "2.2.7";
+          src = pkgs.fetchurl {
+            url = "http://pecl.php.net/get/xdebug-2.2.7.tgz";
+            sha256 = "T85/x5TMux3QuWEZHNAyNRbiFlAv5yCbA3EfxiFkIkU=";
           };
         });
 

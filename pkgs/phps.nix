@@ -14,6 +14,12 @@ let
     {
       inherit packageOverrides;
 
+      # For passing autoconf to generic.nix.
+      autoconf =
+        if prev.lib.versionAtLeast args.version "5.4"
+        then prev.autoconf
+        else prev.autoconf213;
+
       # For passing pcre2 to generic.nix.
       pcre2 =
         if prev.lib.versionAtLeast args.version "7.3"
@@ -64,9 +70,24 @@ let
             ]
             ++ prev.lib.optionals (prev.lib.versionOlder args.version "7.3") [
               # Only PCRE 1 supported and no pkg-config.
-              "--with-pcre-regex=${prev.pcre.dev}"
-              "PCRE_LIBDIR=${prev.pcre}"
+              ##"--with-pcre-regex=${prev.pcre.dev}"
+              ##"PCRE_LIBDIR=${prev.pcre}"
+            ]
+            ++ prev.lib.optionals (prev.lib.versions.majorMinor args.version == "5.3") [
+              #"--prefix=${self}"
+              #"--bindir=$\{out\}/bin"
+              #"--sbindir=$\{out\}/sbin"
+              #"--includedir=$\{dev\}/include"
+              #"--oldincludedir=$\{dev\}/include"
+              #"--mandir=$\{out\}/share/man"
+              #"--infodir=$\{out\}/share/info"
+              #"--docdir=$\{out\}/share/doc/php"
+              #"--libdir=$\{out\}/lib"
+              #"--libexecdir=$\{out\}/libexec"
+              #"--localedir=$\{out\}/share/locale"
             ];
+
+          setOutputFlags = false;
 
           buildInputs =
             attrs.buildInputs
@@ -74,8 +95,19 @@ let
               prev.libxcrypt
             ];
 
+          # For debugging
+          nativeBuildInputs = (attrs.nativeBuildInputs or []) ++ [
+            #prev.breakpointHook
+          ];
+
           preConfigure =
-            prev.lib.optionalString (prev.lib.versionOlder args.version "7.4") ''
+            prev.lib.optionalString (prev.lib.versionOlder args.version "5.4") ''
+              for i in main/build-defs.h.in scripts/php-config.in; do
+                substituteInPlace $i \
+                  --replace '@includedir@' "$dev/include"
+              done
+            ''
+            + prev.lib.optionalString (prev.lib.versionOlder args.version "7.4") ''
               # Workaround “configure: error: Your system does not support systemd.”
               # caused by PHP build system expecting PKG_CONFIG variable to contain
               # an absolute path on PHP ≤ 7.4.

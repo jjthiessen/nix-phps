@@ -38,6 +38,7 @@ base.withExtensions (
       json
       ldap
       mbstring
+      mcrypt
       mysqli
       mysqlnd
       opcache

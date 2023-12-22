@@ -28,6 +28,7 @@ base.withExtensions (
       intl
       ldap
       mbstring
+      mcrypt
       mysqli
       mysqlnd
       opcache
